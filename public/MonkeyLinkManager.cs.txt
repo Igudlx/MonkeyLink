@@ -13,7 +13,7 @@ public class MonkeyLinkManager : MonoBehaviour
     [Header("API Settings")]
     [SerializeField] private string apiKey = "";
     [SerializeField] private string projectId = "";
-    [SerializeField] private string baseUrl = "https://monkey-link.vercel.app/";
+    [SerializeField] private string baseUrl = "https://monkey-link.vercel.app";
     [HideInInspector]
     [SerializeField] private float holdSeconds = 6f;
     [HideInInspector]
