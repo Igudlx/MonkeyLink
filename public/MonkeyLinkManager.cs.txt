@@ -1,0 +1,272 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Globalization;
+using TMPro;
+using UnityEngine;
+using UnityEngine.Networking;
+
+public class MonkeyLinkManager : MonoBehaviour
+{
+    [Header("Monkey Link By Child Games")]
+    [Header("     ")]
+    [Header("API Settings")]
+    [SerializeField] private string apiKey = "__API_KEY__";
+    [SerializeField] private string projectId = "__PROJECT_ID__";
+    [SerializeField] private string baseUrl = "__BASE_URL__";
+    [SerializeField] private float holdSeconds = 6f;
+    [SerializeField] private float minRequestGap = 0.15f;
+    [SerializeField] private float retryDelay = 2f;
+
+    [Header("Events")]
+    [SerializeField] private List<GameObject> eventObjects = new List<GameObject>();
+
+    [Header("Global Message Stuff")]
+    [SerializeField] private TMP_Text globalMessageText;
+    [SerializeField] private float messageDisplayTime = 5f;
+    [SerializeField] private bool disableTextWhenIdle = false;
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip messageSound;
+
+    private readonly Dictionary<string, GameObject> eventLookup =
+        new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<GameObject, Coroutine> activeEvents =
+        new Dictionary<GameObject, Coroutine>();
+    private Coroutine messageRoutine;
+    private string lastProblem = string.Empty;
+    private bool connected;
+
+    private string PollUrl =>
+        baseUrl.Trim().TrimEnd('/') + "/api/v1/" + projectId.Trim() + "/poll?wait=" +
+        Mathf.RoundToInt(Mathf.Clamp(holdSeconds, 0f, 6f));
+
+    void OnEnable()
+    {
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(projectId))
+        {
+            Debug.LogWarning("MonkeyLinkManager: apiKey or projectId is empty.");
+            return;
+        }
+
+        apiKey = apiKey.Trim();
+        projectId = projectId.Trim();
+
+        BuildLookup();
+
+        if (globalMessageText != null)
+        {
+            globalMessageText.text = string.Empty;
+            if (disableTextWhenIdle)
+                globalMessageText.gameObject.SetActive(false);
+        }
+
+        StartCoroutine(PollingLoop());
+    }
+
+    void OnDisable()
+    {
+        activeEvents.Clear();
+        messageRoutine = null;
+        connected = false;
+        lastProblem = string.Empty;
+    }
+
+    void BuildLookup()
+    {
+        eventLookup.Clear();
+
+        foreach (GameObject obj in eventObjects)
+        {
+            if (obj == null) continue;
+
+            string key = obj.name.Trim();
+            if (!eventLookup.ContainsKey(key))
+                eventLookup.Add(key, obj);
+        }
+    }
+
+    IEnumerator PollingLoop()
+    {
+        while (true)
+        {
+            float started = Time.realtimeSinceStartup;
+            string body = null;
+            string problem = null;
+
+            using (UnityWebRequest request = UnityWebRequest.Get(PollUrl))
+            {
+                request.SetRequestHeader("Authorization", "Bearer " + apiKey);
+                request.timeout = Mathf.RoundToInt(holdSeconds) + 10;
+
+                yield return request.SendWebRequest();
+
+                if (request.result == UnityWebRequest.Result.Success)
+                    body = request.downloadHandler.text;
+                else
+                    problem = Describe(request);
+            }
+
+            if (problem != null)
+            {
+                ReportProblem(problem);
+                yield return new WaitForSecondsRealtime(retryDelay);
+                continue;
+            }
+
+            ReportConnected();
+            HandleResponse(body);
+
+            float elapsed = Time.realtimeSinceStartup - started;
+            if (elapsed < minRequestGap)
+                yield return new WaitForSecondsRealtime(minRequestGap - elapsed);
+        }
+    }
+
+    string Describe(UnityWebRequest request)
+    {
+        string detail = string.Empty;
+
+        if (request.downloadHandler != null && !string.IsNullOrEmpty(request.downloadHandler.text))
+        {
+            detail = request.downloadHandler.text;
+            if (detail.Length > 400) detail = detail.Substring(0, 400);
+        }
+
+        string hint = string.Empty;
+        if (request.responseCode == 401) hint = " (apiKey does not match this project)";
+        else if (request.responseCode == 404) hint = " (project not found, check projectId and baseUrl)";
+        else if (request.responseCode == 0) hint = " (no connection)";
+
+        return "HTTP " + request.responseCode + " " + request.error + hint + " " + detail;
+    }
+
+    void ReportProblem(string problem)
+    {
+        connected = false;
+        if (problem == lastProblem) return;
+
+        lastProblem = problem;
+        Debug.LogWarning("MonkeyLinkManager: " + problem);
+    }
+
+    void ReportConnected()
+    {
+        if (connected) return;
+
+        connected = true;
+        lastProblem = string.Empty;
+        Debug.Log("MonkeyLinkManager: connected.");
+    }
+
+    void HandleResponse(string json)
+    {
+        MonkeyLinkResponse response;
+
+        try
+        {
+            response = JsonUtility.FromJson<MonkeyLinkResponse>(json);
+        }
+        catch (Exception)
+        {
+            return;
+        }
+
+        if (response == null) return;
+
+        if (!string.IsNullOrEmpty(response.eventPayload))
+        {
+            try
+            {
+                ApiEventData eventData = JsonUtility.FromJson<ApiEventData>(response.eventPayload);
+                if (eventData != null)
+                    HandleEvent(eventData);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        if (!string.IsNullOrEmpty(response.textPayload))
+            ShowGlobalMessage(response.textPayload);
+    }
+
+    void HandleEvent(ApiEventData eventData)
+    {
+        string key = (eventData.name ?? string.Empty).Trim();
+
+        if (!eventLookup.TryGetValue(key, out GameObject target) || target == null)
+        {
+            Debug.LogWarning("MonkeyLinkManager: no event object named \"" + key + "\".");
+            return;
+        }
+
+        if (!float.TryParse(eventData.time, NumberStyles.Float, CultureInfo.InvariantCulture, out float duration) || duration <= 0f)
+            return;
+
+        if (activeEvents.TryGetValue(target, out Coroutine running) && running != null)
+            StopCoroutine(running);
+
+        activeEvents[target] = StartCoroutine(RunTimedEvent(target, duration));
+    }
+
+    IEnumerator RunTimedEvent(GameObject obj, float duration)
+    {
+        obj.SetActive(true);
+        obj.SendMessage("OnAPIEventStart", SendMessageOptions.DontRequireReceiver);
+
+        yield return new WaitForSecondsRealtime(duration);
+
+        if (obj != null)
+        {
+            obj.SendMessage("OnAPIEventEnd", SendMessageOptions.DontRequireReceiver);
+            obj.SetActive(false);
+        }
+
+        activeEvents.Remove(obj);
+    }
+
+    void ShowGlobalMessage(string message)
+    {
+        if (globalMessageText == null) return;
+
+        if (messageRoutine != null)
+            StopCoroutine(messageRoutine);
+
+        messageRoutine = StartCoroutine(DisplayMessage(message));
+    }
+
+    IEnumerator DisplayMessage(string message)
+    {
+        if (!globalMessageText.gameObject.activeSelf)
+            globalMessageText.gameObject.SetActive(true);
+
+        globalMessageText.text = message;
+
+        if (audioSource != null && messageSound != null)
+            audioSource.PlayOneShot(messageSound);
+
+        yield return new WaitForSecondsRealtime(messageDisplayTime);
+
+        globalMessageText.text = string.Empty;
+
+        if (disableTextWhenIdle)
+            globalMessageText.gameObject.SetActive(false);
+
+        messageRoutine = null;
+    }
+}
+
+[Serializable]
+public class MonkeyLinkResponse
+{
+    public bool success;
+    public string eventPayload;
+    public string textPayload;
+}
+
+[Serializable]
+public class ApiEventData
+{
+    public string name;
+    public string time;
+}
