@@ -419,7 +419,7 @@ export default function Dashboard() {
                 <div className="card">
                   <div className="label" style={{ marginBottom: 4 }}>Execute Global Event</div>
                   <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 16 }}>
-                    Activates a GameObject in your Unity scene by name for a set duration.
+                    Activates a GameObject by name for a set duration.
                   </p>
                   <form onSubmit={sendEvent} className={styles.formGrid}>
                     <div>
@@ -459,7 +459,7 @@ export default function Dashboard() {
                 <div className="card">
                   <div className="label" style={{ marginBottom: 4 }}>Send Global Announcement</div>
                   <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 16 }}>
-                    Displays a message on the global TextMeshPro component in your scene.
+                    Displays a message on the set TextMeshPro in your scene.
                   </p>
                   <form onSubmit={sendText} className={styles.textForm}>
                     <div>
