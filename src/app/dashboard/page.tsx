@@ -450,7 +450,7 @@ export default function Dashboard() {
                       disabled={sendingEvent}
                       style={{ alignSelf: "flex-end" }}
                     >
-                      {sendingEvent ? "Sending…" : "⚡ Send Event"}
+                      {sendingEvent ? "Sending…" : "⚡ Execute Event"}
                     </button>
                   </form>
                 </div>
