@@ -14,12 +14,15 @@ public class MonkeyLinkManager : MonoBehaviour
     [SerializeField] private string apiKey = "";
     [SerializeField] private string projectId = "";
     [SerializeField] private string baseUrl = "https://monkey-link.vercel.app/";
+    [HideInInspector]
     [SerializeField] private float holdSeconds = 6f;
+    [HideInInspector]
     [SerializeField] private float minRequestGap = 0.15f;
+    [HideInInspector]
     [SerializeField] private float retryDelay = 2f;
 
     [Header("Events")]
-    [SerializeField] private List<GameObject> eventObjects = new List<GameObject>();
+    [SerializeField] private List<GameObject> liveEvents = new List<GameObject>();
 
     [Header("Global Message Stuff")]
     [SerializeField] private TMP_Text globalMessageText;
@@ -75,7 +78,7 @@ public class MonkeyLinkManager : MonoBehaviour
     {
         eventLookup.Clear();
 
-        foreach (GameObject obj in eventObjects)
+        foreach (GameObject obj in liveEvents)
         {
             if (obj == null) continue;
 
