@@ -504,7 +504,7 @@ export default function Dashboard() {
                     </button>
                   </div>
                   <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 12 }}>
-                    Download Script gives you MonkeyLinkManager.cs with this project's API key and ID already filled in. Clearing the queue removes the pending event and text so Unity won't receive them.
+                    Press "Download Script" To Get MonkeyLinkManager.cs!
                   </p>
                 </div>
               </div>
