@@ -417,7 +417,7 @@ export default function Dashboard() {
 
                 {/* Send Event */}
                 <div className="card">
-                  <div className="label" style={{ marginBottom: 4 }}>Send Event</div>
+                  <div className="label" style={{ marginBottom: 4 }}>Execute Global Event</div>
                   <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 16 }}>
                     Activates a GameObject in your Unity scene by name for a set duration.
                   </p>
@@ -457,7 +457,7 @@ export default function Dashboard() {
 
                 {/* Send Text */}
                 <div className="card">
-                  <div className="label" style={{ marginBottom: 4 }}>Send Text Message</div>
+                  <div className="label" style={{ marginBottom: 4 }}>Send Global Announcement</div>
                   <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 16 }}>
                     Displays a message on the global TextMeshPro component in your scene.
                   </p>
@@ -478,7 +478,7 @@ export default function Dashboard() {
                       type="submit"
                       disabled={sendingText}
                     >
-                      {sendingText ? "Sending…" : "💬 Send Text"}
+                      {sendingText ? "Sending…" : "💬 Send Announcement"}
                     </button>
                   </form>
                 </div>
@@ -488,16 +488,16 @@ export default function Dashboard() {
                   <div className="label" style={{ marginBottom: 12 }}>Quick Actions</div>
                   <div className={styles.quickActions}>
                     <button className="btn-primary" onClick={downloadScript}>
-                      ⬇ Download Script
-                    </button>
-                    <button className="btn-danger" onClick={clearQueue}>
-                      🗑 Clear Queue
+                      Download Script
                     </button>
                     <button
                       className="btn-secondary"
                       onClick={() => copyToClipboard(selectedProject.id, "pid")}
                     >
                       {copyLabel["pid"] || "Copy Project ID"}
+                    </button>
+                    <button className="btn-danger" onClick={clearQueue}>
+                      Clear Queue
                     </button>
                     <button className="btn-danger" onClick={deleteSelectedProject}>
                       Delete Project
