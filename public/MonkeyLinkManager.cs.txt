@@ -11,9 +11,9 @@ public class MonkeyLinkManager : MonoBehaviour
     [Header("Monkey Link By Child Games")]
     [Header("     ")]
     [Header("API Settings")]
-    [SerializeField] private string apiKey = "__API_KEY__";
-    [SerializeField] private string projectId = "__PROJECT_ID__";
-    [SerializeField] private string baseUrl = "__BASE_URL__";
+    [SerializeField] private string apiKey = "";
+    [SerializeField] private string projectId = "";
+    [SerializeField] private string baseUrl = "https://monkey-link.vercel.app";
     [HideInInspector]
     [SerializeField] private float holdSeconds = 6f;
     [HideInInspector]
