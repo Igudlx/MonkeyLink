@@ -38,13 +38,22 @@ public class MonkeyLinkManager : MonoBehaviour
     private Coroutine messageRoutine;
     private string lastProblem = string.Empty;
     private bool connected;
+    private bool discardNextResponse = true;
 
     private string PollUrl =>
         baseUrl.Trim().TrimEnd('/') + "/api/v1/" + projectId.Trim() + "/poll?wait=" +
-        Mathf.RoundToInt(Mathf.Clamp(holdSeconds, 0f, 6f));
+        (discardNextResponse ? 0 : Mathf.RoundToInt(Mathf.Clamp(holdSeconds, 0f, 6f)));
+
+    void OnApplicationPause(bool paused)
+    {
+        if (!paused)
+            discardNextResponse = true;
+    }
 
     void OnEnable()
     {
+        discardNextResponse = true;
+
         if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(projectId))
         {
             Debug.LogWarning("MonkeyLinkManager: apiKey or projectId is empty.");
@@ -111,13 +120,18 @@ public class MonkeyLinkManager : MonoBehaviour
 
             if (problem != null)
             {
+                discardNextResponse = true;
                 ReportProblem(problem);
                 yield return new WaitForSecondsRealtime(retryDelay);
                 continue;
             }
 
             ReportConnected();
-            HandleResponse(body);
+
+            if (discardNextResponse)
+                discardNextResponse = false;
+            else
+                HandleResponse(body);
 
             float elapsed = Time.realtimeSinceStartup - started;
             if (elapsed < minRequestGap)
